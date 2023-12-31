@@ -1,0 +1,14 @@
+apiVersion: aaq.kubevirt.io/v1alpha1
+kind: ClusterAppsResourceQuota
+metadata:
+  name: example-resource-quota
+spec:
+  quota:
+    hard:
+      pods: "10"
+      secrets: "20"
+  selector:
+    annotations: null
+    labels:
+      matchLabels:
+        name: example
