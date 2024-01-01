@@ -20,8 +20,10 @@ package aaq_controller
 
 import (
 	"context"
+	goflag "flag"
 	"fmt"
 	"github.com/emicklei/go-restful/v3"
+	flag "github.com/spf13/pflag"
 	"io/ioutil"
 	k8sv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,6 +56,7 @@ import (
 
 type AaqControllerApp struct {
 	ctx                           context.Context
+	onOpenshift                   bool
 	aaqNs                         string
 	host                          string
 	LeaderElection                leaderelectionconfig.Configuration
@@ -80,6 +83,9 @@ type AaqControllerApp struct {
 }
 
 func Execute() {
+	flag.CommandLine.AddGoFlag(goflag.CommandLine.Lookup("v"))
+	isOnOpenshift := flag.Bool(util.IsOnOpenshift, false, "number of requested evaluators sidecars")
+	flag.Parse()
 	var err error
 	var app = AaqControllerApp{}
 
@@ -87,6 +93,7 @@ func Execute() {
 	app.readyChan = make(chan bool, 1)
 	app.enqueueAllArgControllerChan = make(chan struct{})
 	app.enqueueAllGateControllerChan = make(chan struct{})
+	app.onOpenshift = *isOnOpenshift
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	app.ctx = ctx
@@ -109,6 +116,9 @@ func Execute() {
 	app.host = host
 
 	app.aaqCli, err = client.GetAAQClient()
+	if err != nil {
+		golog.Fatalf("AAQClient: %v", err)
+	}
 	app.arqInformer = informers.GetApplicationsResourceQuotaInformer(app.aaqCli)
 	app.rqInformer = informers.GetResourceQuotaInformer(app.aaqCli)
 	app.aaqjqcInformer = informers.GetAAQJobQueueConfig(app.aaqCli)
@@ -123,11 +133,7 @@ func Execute() {
 	app.initRQController(stop)
 	app.initAaqConfigurationController(stop)
 
-	onOpenShift, err := util.IsOnOpenShift(app.aaqCli)
-	if err != nil {
-		golog.Fatalf("Error determining cluster type: %v", err)
-	}
-	if onOpenShift {
+	if app.onOpenshift {
 		app.carqInformer = informers.GetClusterAppsResourceQuotaInformer(app.aaqCli)
 		app.crqInformer = informers.GetClusterResourceQuotaInformer(app.aaqCli)
 		app.nsInformer = informers.GetNamespaceInformer(app.aaqCli)
@@ -296,10 +302,6 @@ func (mca *AaqControllerApp) setupLeaderElector() (err error) {
 func (mca *AaqControllerApp) onStartedLeading() func(ctx context.Context) {
 	return func(ctx context.Context) {
 		stop := ctx.Done()
-		onOpenShift, err := util.IsOnOpenShift(mca.aaqCli)
-		if err != nil {
-			golog.Fatalf("Error determining cluster type: %v", err)
-		}
 		go mca.podInformer.Run(stop)
 		go mca.arqInformer.Run(stop)
 		go mca.rqInformer.Run(stop)
@@ -315,7 +317,7 @@ func (mca *AaqControllerApp) onStartedLeading() func(ctx context.Context) {
 		) {
 			klog.Warningf("failed to wait for caches to sync")
 		}
-		if onOpenShift {
+		if mca.onOpenshift {
 			go mca.crqInformer.Run(stop)
 			go mca.carqInformer.Run(stop)
 			go mca.nsInformer.Run(stop)
