@@ -259,7 +259,7 @@ func (mca *MtqControllerApp) onStartedLeading() func(ctx context.Context) {
 			mca.vmmrqInformer.HasSynced,
 			mca.nsInformer.HasSynced,
 		) {
-			log.Log.Warningf("failed to wait for caches to sync")
+			log.Log.Warningf("Failed to wait for caches to sync")
 		}
 
 		go func() {
