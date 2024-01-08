@@ -630,7 +630,7 @@ var _ = Describe("Test arq-controller", func() {
 			ctrl = gomock.NewController(GinkgoT())
 		})
 		It(" pods are ungated and aaqjqc queue should become empty", func() {
-			aaqjqcInformer := testsutils.NewFakeSharedIndexInformer([]metav1.Object{&v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.AaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{"pod-test", "pod-test2"}}}})
+			aaqjqcInformer := testsutils.NewFakeSharedIndexInformer([]metav1.Object{&v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.ApplicationsResourceQuotaAaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{"pod-test", "pod-test2"}}}})
 			cli := client.NewMockAAQClient(ctrl)
 			fakek8sCli := k8sfake.NewSimpleClientset([]runtime.Object{
 				&corev1.Pod{
@@ -650,16 +650,16 @@ var _ = Describe("Test arq-controller", func() {
 			}...)
 			cli.EXPECT().CoreV1().Times(1).Return(fakek8sCli.CoreV1())
 			mockAaaqjqcInterface := client.NewMockAAQJobQueueConfigInterface(ctrl)
-			mockAaaqjqcInterface.EXPECT().UpdateStatus(context.Background(), &v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.AaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{}}}, metav1.UpdateOptions{})
+			mockAaaqjqcInterface.EXPECT().UpdateStatus(context.Background(), &v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.ApplicationsResourceQuotaAaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{}}}, metav1.UpdateOptions{})
 			cli.EXPECT().AAQJobQueueConfigs("testNs").Times(1).Return(mockAaaqjqcInterface)
 			qc := setupQuotaController(cli, nil, nil, aaqjqcInformer)
-			err, es := qc.execute("testNs" + "/fakeArq")
+			err, es := qc.execute("testNs")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(es).To(Equal(Forget))
 		})
 
 		It(" not all pods are ungated and aaqjqc queue should not become empty", func() {
-			aaqjqcInformer := testsutils.NewFakeSharedIndexInformer([]metav1.Object{&v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.AaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{"pod-test", "pod-test2"}}}})
+			aaqjqcInformer := testsutils.NewFakeSharedIndexInformer([]metav1.Object{&v1alpha1.AAQJobQueueConfig{ObjectMeta: metav1.ObjectMeta{Name: arq_controller.ApplicationsResourceQuotaAaqjqcName, Namespace: "testNs"}, Status: v1alpha1.AAQJobQueueConfigStatus{[]string{"pod-test", "pod-test2"}}}})
 			cli := client.NewMockAAQClient(ctrl)
 			fakek8sCli := k8sfake.NewSimpleClientset([]runtime.Object{
 				&corev1.Pod{
@@ -680,7 +680,7 @@ var _ = Describe("Test arq-controller", func() {
 			}...)
 			cli.EXPECT().CoreV1().Times(1).Return(fakek8sCli.CoreV1())
 			qc := setupQuotaController(cli, nil, nil, aaqjqcInformer)
-			err, es := qc.execute("testNs" + "/fakeArq")
+			err, es := qc.execute("testNs")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(es).To(Equal(Immediate))
 		})
